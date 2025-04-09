@@ -1,0 +1,158 @@
+
+<div template-section="onIncludeOnce">
+<style>
+    .node_label_white { fill: white; }
+</style>
+</div>
+
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name",                         { value: "Traccar Event", required: true })
+        .addDefault("traccar_serverconfig",         { type: "TraccarServerConfigNode", required: true })
+        .addDefault("traccar_subscriptionfilter",   { value: "", required: false })
+        .addDefault("traccar_getpositionsonconnect",{ value: true })
+        .setIcon("traccar.png")
+        .setPaletteLabel("Traccar Event")
+        .setLabelStyle("node_label_white")
+        .setLabel(function() { return this.name; })
+        .setColor("#1E88E5")
+        .addOutputs("event")
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+{
+    let node = this;
+    let suggestions = {};
+
+    function loadSuggestions() {
+        let connection = {};
+        RED.nodes.eachConfig(function(cfg) {
+            if (cfg.id === node.traccar_serverconfig) {
+                connection = { url: cfg.url, username: cfg.username, password: cfg.password };
+            }
+        });
+
+        if (!connection.url) return;
+
+        $.ajax({
+            url: "traccarservice/filtersuggestions",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({ connection: connection }),
+            success: function(data) { suggestions = data; },
+            error: function() { suggestions = {}; }
+        });
+    }
+
+    $("#node-input-traccar_serverconfig").on("change", loadSuggestions);
+    loadSuggestions();
+
+    $("#node-input-traccar_subscriptionfilter").autoComplete({
+        search: function(val) {
+            // Find which segment the cursor is currently in (after the last comma)
+            var lastComma = val.lastIndexOf(",");
+            var prefix    = lastComma >= 0 ? val.substring(0, lastComma + 1) + " " : "";
+            var segment   = (lastComma >= 0 ? val.substring(lastComma + 1) : val).trimStart();
+            var colonIdx  = segment.indexOf(":");
+
+            var items = [];
+
+            if (colonIdx === -1) {
+                // No colon yet - suggest matching selectors
+                var term = segment.toLowerCase();
+                Object.keys(suggestions).forEach(function(selector) {
+                    if (selector.startsWith(term)) {
+                        items.push({
+                            value: prefix + selector + ":",
+                            label: $("<div><b>" + selector + "</b>:</div>")
+                        });
+                    }
+                });
+            } else {
+                // Selector typed - suggest values for that selector
+                var selector = segment.substring(0, colonIdx).toLowerCase();
+                var term     = segment.substring(colonIdx + 1).toLowerCase();
+                var list     = suggestions[selector] || [];
+                list
+                    .filter(function(name) { return name.toLowerCase().startsWith(term); })
+                    .forEach(function(name) {
+                        items.push({
+                            value: prefix + selector + ":" + name,
+                            label: $("<div>" + name + "</div>")
+                        });
+                    });
+            }
+
+            return items;
+        }
+    });
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+{
+    $("#node-input-traccar_subscriptionfilter").autoComplete("destroy");
+}
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-traccar_serverconfig" style="width:120px;"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-traccar_serverconfig" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-traccar_subscriptionfilter" style="width:120px;"><i class="fa fa-filter"></i> Filter</label>
+        <input type="text" id="node-input-traccar_subscriptionfilter" placeholder="device:foo*, group:bar" />
+    </div>
+
+    <div class="form-row">
+        <input type="checkbox" id="node-input-traccar_getpositionsonconnect" style="margin:8px 0 10px 120px; width:20px;" />
+        <label style="width:auto;" for="node-input-traccar_getpositionsonconnect">Get positions on connect</label>
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Subscribes to a Traccar server and emits a message for each incoming position update that matches the configured filter.
+
+### Properties
+
+: *name*                    (string) : Display label for this node.
+: *server*                  (config) : The Traccar Server config node to connect to.
+: *filter*                  (string) : Optional filter expression (see Filter Syntax below). Leave blank to receive all position updates.
+: *get positions on connect* (bool)  : When enabled, fetches the last known position for all matched devices immediately when the WebSocket connects, before waiting for live updates.
+
+### Outputs
+
+: *msg.payload.position* (object) : The Traccar position object. Key fields include `latitude`, `longitude`, `altitude`, `speed` (knots), `course` (degrees), `fixTime`, `valid`, `attributes`, and `device` (an enriched object containing the device name, uniqueId, status, and group hierarchy).
+
+### Details
+
+The node status shows **connected** (green dot) when the WebSocket is open, or **disconnected** (red dot) if the connection drops or the server is unreachable.
+
+#### Filter Syntax
+
+A filter is a comma-separated list of matchers. Each matcher has the form `<selector>:<pattern>`. Supported selectors are `device` (matches the device name) and `group` (matches any group the device belongs to). The pattern supports `*` as a wildcard.
+
+```
+device:MyPhone              exact match on device name
+device:Truck*               any device whose name starts with "Truck"
+device:*Van*                any device whose name contains "Van"
+group:Fleet                 all devices in the group "Fleet"
+group:Fleet,device:MyPhone  devices in "Fleet" OR the device "MyPhone"
+```
+
+Multiple matchers are combined with OR logic - a position is forwarded if any one matcher matches.
+
+Group matching is hierarchical: if a device belongs to group `Child` and `Child` is a sub-group of `Parent`, then `group:Parent` will also match that device.
+
+Auto-complete is available in the filter field: type a selector name (e.g. `dev`) to expand it to `device:`, then continue typing to see matching device or group names fetched live from the server.
+
+### References
+- [Traccar](https://www.traccar.org/)
+</script>

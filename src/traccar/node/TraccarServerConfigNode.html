@@ -1,0 +1,137 @@
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name",         { value: "Traccar Server", required: true })
+        .addDefault("url",          { value: "http://traccar.example.com", required: true })
+        .addDefault("username",     { value: "", required: true })
+        .addDefault("password",     { value: "", required: true })
+        .addDefault("cacheTimeout", { value: 5, required: true })
+        .setPaletteLabel("Traccar Server Config")
+        .setLabel(function() { return this.name; })
+        .setColor("#1E88E5")
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+{
+    let node = this;
+
+    $("#traccar-reload-cache-btn").on("click", function() {
+        var $btn = $(this);
+        var $status = $("#traccar-reload-cache-status");
+        $status.text("Reloading...").css("color", "gray");
+        $btn.prop("disabled", true);
+
+        $.ajax({
+            url: "traccarservice/reloadcache",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({ nodeId: node.id }),
+            success: function(response) {
+                $status.text("\u2714 " + response.message).css("color", "green");
+            },
+            error: function(jqXHR) {
+                var msg = "Reload failed";
+                try { var body = JSON.parse(jqXHR.responseText); if (body.error) msg = body.error; } catch(e) {}
+                $status.text("\u2718 " + msg).css("color", "red");
+            },
+            complete: function() { $btn.prop("disabled", false); }
+        });
+    });
+
+    $("#traccar-test-connection-btn").on("click", function() {
+        var $btn = $(this);
+        var $status = $("#traccar-test-connection-status");
+        $status.text("Testing...").css("color", "gray");
+        $btn.prop("disabled", true);
+
+        $.ajax({
+            url: "traccarservice/testconnection",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({
+                url:      $("#node-config-input-url").val(),
+                username: $("#node-config-input-username").val(),
+                password: $("#node-config-input-password").val(),
+            }),
+            success: function() {
+                $status.text("\u2714 Connection successful").css("color", "green");
+            },
+            error: function(jqXHR) {
+                var msg = "Connection failed";
+                try { var body = JSON.parse(jqXHR.responseText); if (body.error) msg = body.error; } catch(e) {}
+                $status.text("\u2718 " + msg).css("color", "red");
+            },
+            complete: function() { $btn.prop("disabled", false); }
+        });
+    });
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+{
+    let node = this;
+}
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-config-input-name" style="width:120px;"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-url" style="width:120px;"><i class="fa fa-globe"></i> URL</label>
+        <input type="url" id="node-config-input-url" placeholder="http://traccar.example.com" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-username" style="width:120px;"><i class="fa fa-user"></i> Username</label>
+        <input type="text" id="node-config-input-username" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-password" style="width:120px;"><i class="fa fa-lock"></i> Password</label>
+        <input type="password" id="node-config-input-password" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-cacheTimeout" style="width:120px;"><i class="fa fa-clock-o"></i> Cache Timeout</label>
+        <input type="number" id="node-config-input-cacheTimeout" min="0" placeholder="5" style="width:60px;" />
+        <span style="margin-left:6px; line-height:28px;">minutes (0 = always fetch)</span>
+    </div>
+
+    <div class="form-row">
+        <label></label>
+        <button type="button" id="traccar-test-connection-btn" class="red-ui-button">
+            <i class="fa fa-plug"></i> Test Connection
+        </button>
+        <span id="traccar-test-connection-status" style="margin-left:10px; font-size:12px;"></span>
+    </div>
+
+    <div class="form-row">
+        <label></label>
+        <button type="button" id="traccar-reload-cache-btn" class="red-ui-button">
+            <i class="fa fa-refresh"></i> Reload Cache
+        </button>
+        <span id="traccar-reload-cache-status" style="margin-left:10px; font-size:12px;"></span>
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Connection configuration for a Traccar GPS tracking server. Referenced by all Traccar nodes.
+
+### Properties
+
+: *name*          (string) : Display label for this config.
+: *url*           (string) : The base URL of the Traccar server, e.g. `http://traccar.example.com` or `https://demo.traccar.org`.
+: *username*      (string) : Traccar account username (email address).
+: *password*      (string) : Traccar account password.
+: *cache timeout* (number) : How long (in minutes) to cache device and group data locally before re-fetching from the server. Defaults to 5 minutes. Set to `0` to always fetch fresh data. Use the **Reload Cache** button to force an immediate refresh without waiting for the timeout.
+
+### Details
+
+On deployment the node connects to the Traccar server, loads devices and groups into its internal cache, and opens a WebSocket subscription for live position updates. All Traccar Event and Get Device Location nodes that reference this config share the same connection.
+
+### References
+- [Traccar](https://www.traccar.org/)
+- [Traccar API](https://www.traccar.org/traccar-api/)
+</script>

@@ -1,0 +1,178 @@
+<div template-section="onIncludeOnce">
+<style>
+    .node_label_white { fill: white; }
+</style>
+</div>
+
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name",         { value: "Get Device Location", required: true })
+        .addDefault("serverconfig", { type: "TraccarServerConfigNode", required: true })
+        .addDefault("device",       { value: "", required: true })
+        .addDefault("device_type",  { value: "str", required: false })
+        .addDefault("outputpath",   { value: "", required: false })
+        .setIcon("traccar.png")
+        .setPaletteLabel("Traccar GetDeviceLocation")
+        .setLabelStyle("node_label_white")
+        .setLabel(function() { return this.name; })
+        .setColor("#1E88E5")
+        .setInput("input")
+        .addOutputs("locations")
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+{
+    let node = this;
+    let suggestions = {};
+
+    function loadSuggestions() {
+        let connection = {};
+        RED.nodes.eachConfig(function(cfg) {
+            if (cfg.id === node.serverconfig) {
+                connection = { url: cfg.url, username: cfg.username, password: cfg.password };
+            }
+        });
+
+        if (!connection.url) return;
+
+        $.ajax({
+            url: "traccarservice/filtersuggestions",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({ connection: connection }),
+            success: function(data) { suggestions = data; },
+            error: function() { suggestions = {}; }
+        });
+    }
+
+    $("#node-input-serverconfig").on("change", loadSuggestions);
+    loadSuggestions();
+
+    $("#node-input-device").typedInput({
+        default: "str",
+        typeField: "#node-input-device_type",
+        types: ["msg", "flow", "global", "str"]
+    });
+
+    // typedInput hides the original <input> and creates a new visible one inside
+    // .red-ui-typedInput-container - autoComplete must target that element so its
+    // offset() calculation returns the correct screen position.
+    var $deviceAutoComplete = $("#node-input-device")
+        .next(".red-ui-typedInput-container")
+        .find("input.red-ui-typedInput-input");
+
+    $deviceAutoComplete.autoComplete({
+        search: function(val) {
+            // Only suggest filter terms when type is a literal string
+            if ($("#node-input-device").typedInput("type") !== "str") return [];
+
+            var lastComma = val.lastIndexOf(",");
+            var prefix    = lastComma >= 0 ? val.substring(0, lastComma + 1) + " " : "";
+            var segment   = (lastComma >= 0 ? val.substring(lastComma + 1) : val).trimStart();
+            var colonIdx  = segment.indexOf(":");
+
+            var items = [];
+
+            if (colonIdx === -1) {
+                var term = segment.toLowerCase();
+                Object.keys(suggestions).forEach(function(selector) {
+                    if (selector.startsWith(term)) {
+                        items.push({
+                            value: prefix + selector + ":",
+                            label: $("<div><b>" + selector + "</b>:</div>")
+                        });
+                    }
+                });
+            } else {
+                var selector = segment.substring(0, colonIdx).toLowerCase();
+                var term     = segment.substring(colonIdx + 1).toLowerCase();
+                var list     = suggestions[selector] || [];
+                list
+                    .filter(function(name) { return name.toLowerCase().startsWith(term); })
+                    .forEach(function(name) {
+                        items.push({
+                            value: prefix + selector + ":" + name,
+                            label: $("<div>" + name + "</div>")
+                        });
+                    });
+            }
+
+            return items;
+        }
+    });
+
+    $("#node-input-outputpath").typedInput({ types: ["msg"] });
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+{
+    $("#node-input-device")
+        .next(".red-ui-typedInput-container")
+        .find("input.red-ui-typedInput-input")
+        .autoComplete("destroy");
+}
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-serverconfig" style="width:120px;"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-serverconfig" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-device" style="width:120px;"><i class="fa fa-filter"></i> Filter</label>
+        <input type="text" id="node-input-device" />
+        <input type="hidden" id="node-input-device_type" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-outputpath" style="width:120px;"><i class="fa fa-arrow-right"></i> Output Path</label>
+        <input type="text" id="node-input-outputpath" />
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Fetches the last known position for one or more Traccar devices when triggered by an incoming message.
+
+### Properties
+
+: *name*        (string) : Display label for this node.
+: *server*      (config) : The Traccar Server config node to query.
+: *filter*      (typed)  : A filter expression. Can be a literal string or resolved dynamically from `msg`, `flow`, or `global`. Uses the same filter syntax as the Traccar Event node - see Filter Syntax below.
+: *output path* (msg)    : The `msg` property to write results to (e.g. `msg.payload`). The value is always an array - empty if no devices match the filter.
+
+### Inputs
+
+: *msg* (any) : Any incoming message triggers a location lookup. The original message is forwarded with the results written to the configured output path.
+
+### Outputs
+
+: *msg* : The original message enriched with an array of matching position objects at the configured output path. Each position object contains `latitude`, `longitude`, `altitude`, `speed`, `course`, `fixTime`, `valid`, `attributes`, and a `device` object with the device name, uniqueId, status, and group hierarchy.
+
+### Filter Syntax
+
+A filter is a comma-separated list of matchers. Each matcher has the form `<selector>:<pattern>`. Supported selectors are `device` (matches the device name) and `group` (matches any group the device belongs to). The pattern supports `*` as a wildcard.
+
+```
+device:MyPhone              last position for the device named "MyPhone"
+device:Truck*               last position for all devices whose name starts with "Truck"
+device:*Van*                last position for all devices whose name contains "Van"
+group:Cars                  last position for all devices in the "Cars" group
+group:Cars,device:MyPhone   union - devices in "Cars" OR the device "MyPhone"
+```
+
+Multiple matchers are combined with OR logic. Group matching is hierarchical - sub-groups are included when a parent group is matched.
+
+When the filter field is set to `msg`, `flow`, or `global`, the resolved value is used as-is as the filter string.
+
+Auto-complete is available when the filter is set to a literal string: type a selector name to expand it, then continue typing to see matching device or group names fetched live from the server.
+
+### References
+- [Traccar](https://www.traccar.org/)
+</script>

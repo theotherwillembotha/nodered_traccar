@@ -1,0 +1,56 @@
+{
+  "name": "@theotherwillembotha/node-red-traccar",
+  "version": "0.0.55",
+  "description": "Traccar GPS tracking integration nodes for Node-RED",
+  "main": "./build/index.js",
+  "author": "Willem Botha",
+  "license": "ISC",
+  "keywords": [
+    "node-red",
+    "traccar",
+    "gps",
+    "tracking",
+    "location"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run clean && tsc && npm run generate-nodes && npm run copy-files",
+    "clean": "rm -rf ./build",
+    "generate-nodes": "node build/GenerateNodes.js",
+    "copy-files": "cp -r ./icons ./build/"
+  },
+  "files": [
+    "build/",
+    "icons/",
+    "documentation/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@theotherwillembotha/node-red-plugincore": "^0.0.55",
+    "axios": "^1.9.0",
+    "qs": "^6.13.0",
+    "tough-cookie": "^5.1.2",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "@theotherwillembotha/node-red-plugincore": "../nodered_plugincore",
+    "@types/node": "^22.15.16",
+    "@types/node-red": "~1.3.5",
+    "@types/qs": "^6.9.18",
+    "@types/ws": "^8.18.1"
+  },
+  "node-red": {
+    "version": ">=3.0.0",
+    "nodes": {
+      "traccar": "./build/Nodes.js"
+    },
+    "plugins": {
+      "traccar": "./build/Plugins.js"
+    }
+  }
+}
