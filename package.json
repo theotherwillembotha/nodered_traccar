@@ -13,7 +13,8 @@
     "location"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18",
+    "nodered": ">=4.0.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -25,7 +26,9 @@
   "files": [
     "build/",
     "icons/",
-    "documentation/"
+    "documentation/",
+    "LICENSE",
+    "README.md"
   ],
   "publishConfig": {
     "access": "public"
@@ -45,7 +48,7 @@
     "@types/ws": "^8.18.1"
   },
   "node-red": {
-    "version": ">=3.0.0",
+    "version": ">=4.0.0",
     "nodes": {
       "traccar": "./build/Nodes.js"
     },
