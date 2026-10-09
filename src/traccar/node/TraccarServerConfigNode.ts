@@ -15,7 +15,7 @@ interface TraccarServerConfigNodeConfig extends ConfigNodeConfig {
     name:"Traccar Server Config Node",
     group:"config",
     sourceFile:SourceUtility.getSourcePath("/build/", "/src/") + "TraccarServerConfigNode.html",
-    package: "@theotherwillembotha/nodered_plugintraccar",
+    package: "@theotherwillembotha/node-red-traccar",
     dependencies: [ TraccarService ],
     tags: [ "Traccar" ]
 })

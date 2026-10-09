@@ -20,7 +20,7 @@ export interface TraccarGetDeviceLocationNodeConfig extends BaseNodeConfig, Metr
     name:"Traccar Get Device Location Node",
     group:"traccar",
     sourceFile:SourceUtility.getSourcePath("/build/", "/src/") + "TraccarGetDeviceLocationNode.html",
-    package: "@theotherwillembotha/nodered_plugintraccar",
+    package: "@theotherwillembotha/node-red-traccar",
     templates: [
         { template: LoggerTemplate, config: {}},
         { template: MetricsTemplate, config: {}}

@@ -17,7 +17,7 @@ interface TraccarEventNodeConfig extends BaseNodeConfig, MetricsTemplateConfig, 
     name:"Traccar Event Node",
     group:"traccar",
     sourceFile:SourceUtility.getSourcePath("/build/", "/src/") + "TraccarEventNode.html",
-    package: "@theotherwillembotha/nodered_plugintraccar",
+    package: "@theotherwillembotha/node-red-traccar",
     templates: [
         { template: LoggerTemplate, config: {}},
         { template: MetricsTemplate, config: {}}

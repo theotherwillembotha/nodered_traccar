@@ -126,8 +126,8 @@ export class TraccarService extends BaseService {
 
     static override getServiceDescriptor():ServiceDescriptor {
         return new ServiceDescriptor(
-            "@theotherwillembotha/nodered_plugintraccar",
-            "TraccarService", 
+            "@theotherwillembotha/node-red-traccar",
+            "TraccarService",
             "integration-plugin",
             "./traccar/service/TraccarService",
             TraccarService);

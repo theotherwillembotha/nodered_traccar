@@ -1,4 +1,4 @@
-import { NodeGenerator } from "@theotherwillembotha/node-red-plugincore";
+import { NodeGenerator, NodeTypeService } from "@theotherwillembotha/node-red-plugincore";
 
 // nodes.
 import { TraccarService } from "./traccar/service/TraccarService";
@@ -8,6 +8,7 @@ import { TraccarGetDeviceLocationNode } from "./traccar/node/TraccarGetDeviceLoc
 
 new NodeGenerator("./src/")
     // services.
+    .registerService(NodeTypeService)
     .registerService(TraccarService)
 
     // nodes
@@ -16,6 +17,6 @@ new NodeGenerator("./src/")
     .registerNode(TraccarEventNode)
 
     // done.
-    .generate("./build/Nodes", "./build/Plugins");
+    .generate("./build/Nodes", "./build/Plugins", "@theotherwillembotha/node-red-traccar");
 
 process.exit(0);
